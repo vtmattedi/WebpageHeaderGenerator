@@ -20,8 +20,18 @@
 
 import datetime
 import os
-Import("env")
 import re
+
+#use pio env
+PIO_ENV = False
+try: 
+    from SCons.Script import Import
+    Import("env")
+    PIO_ENV = True
+except ImportError:
+    PIO_ENV = False
+    pass
+
 
 DEBUG_PDIR = False          # Prints the 'WebPageFolder' and the Output folder.
 DEBUG_FILEDIR = False       # Prints the filename of all files been looped
@@ -32,11 +42,16 @@ INCLUDE_SUBFOLDERS = True   # Set to True to loop through subfolders of the 'Web
 USE_STATIC_CONSTANTS = True # if True, will try to find definitions for words inside braces and replace them
                             # I.E. {device_name} will be replace if #define device_name is found in any of the
                             # FILES_WITH_STATIC_CONSTANTS
-
-FILES_WITH_STATIC_CONSTANTS = [env.subst("$PROJECT_DIR") + os.sep + "src" + os.sep + "main.cpp", 
+FILES_WITH_STATIC_CONSTANTS = []
+if PIO_ENV:
+    FILES_WITH_STATIC_CONSTANTS = [env.subst("$PROJECT_DIR") + os.sep + "src" + os.sep + "main.cpp", 
                             env.subst("$PROJECT_DIR") + os.sep + "include" + os.sep + "Version.h"]
+if PIO_ENV:
+    WebPageFolder = env.subst("$PROJECT_DIR") + os.sep + "src" + os.sep + "WebPage" + os.sep
+else:
+    WebPageFolder = os.path.join(os.path.dirname(os.path.realpath(__file__)), "WebPage")#by default if not using pio, the script is in the same folder as the WebPage folder
 
-WebPageFolder = env.subst("$PROJECT_DIR") + os.sep + "src" + os.sep + "WebPage" + os.sep
+
 DEST_DIR = os.path.join(WebPageFolder, "Output")
 
 def getValueFromFile(files,value):
@@ -47,18 +62,13 @@ def getValueFromFile(files,value):
             input_string = ''
             with open(file, 'r') as f:
                 input_string = f.read()
-            # Define the regular expression pattern to match DEVICE_NAME followed by the target word
+            # Define the regular expression pattern to match the value
             pattern = rf'#define {re.escape(value)}\s*"([^"]+)"'
             # Use re.search() to find the pattern in the input string
-            match = re.search(pattern, input_string, re.I)
-
-            # Check if the pattern is found and get the word after "device_name ="
+            match = re.search(pattern, input_string, re.I) #finds all matches
             if match:
                 foundValue = match.group(1)
-                #print(f"Word after '{value}' is:", foundValue)
                 found = True
-            #else:
-                #print("No match found for 'device_name =' in the input string.")
     return found, foundValue
 
 if DEBUG_PDIR:
